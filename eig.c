@@ -1,237 +1,119 @@
+#include <stdio.h>
+#include <lapacke.h>
 #include "eig.h"
-#include <stdlib.h>
-#include <math.h>
-#include <time.h>
 
-static void rand_unit_vector(double* x, int n) {
-  double s = 0.0;
+static double* matrix_cpy(const double* A, size_t n) {
+	double* A_cpy = malloc(n * n * sizeof(double));
 
-  for (int i = 0; i < n; i++) {
-    x[i] = ((double) rand() / RAND_MAX) - 0.5;
-    s += x[i] * x[i];
-  }
+	if (!A_cpy) {
+		die("malloc error (A_cpy)");
+	}
 
-  s = sqrt(s);
+	for (size_t i = 0; i < n * n; i++) {
+		A_cpy[i] = A[i];
+	}
 
-  if (s == 0.0) {
-    x[0] = 1.0;
-    s = 1.0;
-  }
-
-  for (int i = 0; i < n; i++) {
-    x[i] /= s;
-  }
+	return A_cpy;
 }
 
-static double dot(const double* a, const double* b, int n) {
-  double s = 0.0;
+static double trace(const double* A, size_t n) {
+	double t = 0.0;
 
-  for (int i = 0; i < n; i++) {
-    s += a[i] * b[i];
-  }
+	for (size_t i = 0; i < n; i++) {
+		t += A[IDX(i, i, n)];
+	}
 
-  return s;
-}
-
-static double norm2(const double* a, int n) {
-  return sqrt(dot(a, a, n));
-}
-
-static void matvec_int
-(
-  const int** M,
-  const double* x,
-  double* y,
-  int n
-)
-{
-  for (int i = 0; i < n; i++) {
-    double acc = 0.0;
-
-    const int* row = (const int*)M[i];
-
-    for (int j = 0; j < n; j++) {
-      acc += (double) row[j] * x[j];
-    }
-
-    y[i] = acc;
-  }
-}
-
-static double rayleigh_int
-(
-  const int** M,
-  const double* x,
-  int n,
-  double* tmp
-)
-{
-  matvec_int(M, x, tmp, n);
-  double num = dot(x, tmp, n);
-  double den = dot(x, x, n);
-
-  return num / den;
-}
-
-double power_method_int
-(
-    const int** M,
-  int n,
-  int maxit,
-  double tol,
-  double* out_vec  
-)
-{
-  double* x = malloc(n * sizeof(double));
-  double* y = malloc(n * sizeof(double));
-
-  rand_unit_vector(x, n);
-
-  double lambda = 0.0, lambda_old = 0.0;
-
-  for (int it = 0; it < maxit; it++) {
-    matvec_int(M, x, y, n);
-
-    double ny = norm2(y, n);
-
-    if (ny == 0.0) {
-      rand_unit_vector(x, n);
-      continue;
-    }
-
-    for (int i = 0; i < n; i++) {
-      x[i] = y[i] / ny;
-    }
-
-    lambda_old = lambda;
-    lambda = rayleigh_int(M, x, n, y);
-
-    double denom = fmax(1.0, fabs(lambda));
-
-    if (fabs(lambda - lambda_old) / denom < tol) {
-      break;
-    }
-  }
-
-  for (int i = 0; i < n; i++) {
-    out_vec[i] = x[i];
-  }
-
-  free(x);
-  free(y);
-
-  return lambda;
-}
-
-// Calcula norma do subvetor (start, n) de x;
-static double vnorm2(const double* x, int start, int n) {
-  double s = 0.0;
-
-  for (int i = start; i < n; i++) {
-    s += x[i] * x[i];
-  }
-
-  return sqrt(s);
+	return t;
 }
 
 
-// Aplica a reflexão de householder à esquerda de A
+/*Usa lapacke e cblas para achar o espectro de uma matriz.
+'N' indica que não queremos achar os autovetores de A.
+Caso seja de seu desejo (e caso você esteja com paciência)
+achar os autovetores, altere a função (isso mesmo, você altera)
+trocando 'N' para 'V' e retornando a matriz A_cpy, pois ela
+conterá os autovetores (ou troque A_cpy por A e tire o const
+do argumento double* A, mas aí você vai perder o conteúdo da
+matriz passada)*/
+int matrix_spec(const double* A, size_t n, double* x) {
+	double* A_cpy = matrix_cpy(A, n);
 
-static void householder_left(double **A, int n, int k, double *u){
-    // constrói u a partir da coluna k
-    double sigma = vnorm2(&A[k][k], 0, n-k);
-    if (sigma==0.0) { for (int i=0;i<n;i++) u[i]=0.0; return; }
+	int info = LAPACKE_dsyev(LAPACK_ROW_MAJOR, 'N', 'U', (int) n, 
+		A_cpy, (int) n, x);
 
-    // vetor v = coluna k (i>=k)
-    for (int i=0;i<k;i++) u[i]=0.0;
-    for (int i=k;i<n;i++) u[i]=A[i][k];
-
-    double sign = (u[k]>=0.0)? 1.0 : -1.0;
-    u[k] += sign*sigma;
-    // normaliza u
-    double nu = 0.0; for (int i=k;i<n;i++) nu += u[i]*u[i];
-    nu = sqrt(nu); if (nu==0.0){ for (int i=0;i<n;i++) u[i]=0.0; return; }
-    for (int i=k;i<n;i++) u[i] /= nu;
-
-    // A <- (I - 2 u u^T) A
-    // compute w = 2 * u^T A (linhas k..n-1)
-    for (int j=k;j<n;j++){
-        double dot=0.0;
-        for (int i=k;i<n;i++) dot += u[i]*A[i][j];
-        double factor = 2.0*dot;
-        for (int i=k;i<n;i++) A[i][j] -= factor*u[i];
-    }
-}
-// Aplica a reflexão de householder à direita
-
-static void householder_right(double **A, int n, int k, const double *u){
-    // A <- A - 2*(A u) u^T
-    double *Au = malloc(n*sizeof(double));
-    for (int i=0;i<n;i++){
-        double s=0.0;
-        for (int j=k;j<n;j++) s += A[i][j]*u[j];
-        Au[i]=s;
-    }
-    for (int i=0;i<n;i++){
-        double factor = 2.0*Au[i];
-        for (int j=k;j<n;j++) A[i][j] -= factor*u[j];
-    }
-    free(Au);
+	free(A_cpy);
+	return info;
 }
 
 
-static void qr_householder(double **A, int n, double **Q_out){
-    if (Q_out){
-        for (int i=0;i<n;i++)
-            for (int j=0;j<n;j++)
-                Q_out[i][j] = (i==j)?1.0:0.0;
-    }
-    double *u = malloc(n*sizeof(double));
-    for (int k=0;k<n-1;k++){
-        householder_left(A, n, k, u);
-        if (Q_out) householder_right(Q_out, n, k, u); // k, não 0
-    }
-    free(u);
+int graph_spec_adj(const Graph* g, double* x) {
+	double* A_cpy = matrix_cpy(g->A, g->n);
+
+	int info = matrix_spec(A_cpy, g->n, x);
+
+	free(A_cpy);
+	return info;
 }
-/* Transforma A numa matriz onde os elementos da diagonal
-são seus autovalores.
-Este algoritmo tem complexidade O(n³) e
-é razoavel para matrizes pequenas. */
-void qr_iterate(double **A, int n, int maxit, double tol){
-    double **Q = malloc(n*sizeof(*Q));
-    double **R = malloc(n*sizeof(*R));
-    for (int i=0;i<n;i++){ Q[i]=malloc(n*sizeof(**Q)); R[i]=malloc(n*sizeof(**R)); }
 
-    for (int it=0; it<maxit; it++){
-        // R <- A (vamos fatorar R = Q*R via Householder à esquerda)
-        for (int i=0;i<n;i++) for (int j=0;j<n;j++) R[i][j]=A[i][j];
 
-        // QR por Householder: R vira triangular sup; Q_out recebe Q
-        qr_householder(R, n, Q);
+int graph_spec_lap(const Graph* g, double* x) {
+	double* l = (double*) calloc(g->n * g->n, sizeof(double));
 
-        // A <- R * Q
-        for (int i=0;i<n;i++){
-            for (int j=0;j<n;j++){
-                double s=0.0;
-                for (int k=0;k<n;k++) s += R[i][k]*Q[k][j];
-                A[i][j] = s;
-            }
-        }
+	int info = matrix_spec(l, g->n, x);
 
-        // reforço de simetria
-        for (int i=0;i<n;i++)
-            for (int j=i+1;j<n;j++){
-                double s = 0.5*(A[i][j]+A[j][i]);
-                A[i][j]=A[j][i]=s;
-            }
+	free(l);
+	return info;
+}
 
-        // parada: norma fora da diagonal
-        double off=0.0;
-        for (int i=0;i<n;i++) for (int j=0;j<n;j++)
-            if (i!=j) off += A[i][j]*A[i][j];
-        if (sqrt(off) < tol) break;
-    }
+void eigenvalues_print(const double* x, size_t n, const char* title) {
+	if (title) {
+		printf("%s\n", title);
+	}
 
-    for (int i=0;i<n;i++){ free(Q[i]); free(R[i]); }
-    free(Q); free(R);
+	for (size_t i = 0; i < n; i++) {
+		printf("λ[%zu] = %.6f\n", i, x[i]);
+	}	
+}
+
+
+/*Usa as fórmulas/algoritmo de Faddeev–LeVerrier para achar 
+os coeficientes:
+https://en.wikipedia.org/wiki/Faddeev%E2%80%93LeVerrier_algorithm
+*/
+void matrix_char_coeffs(const double* A, size_t n, double* coeffs) {
+	double* Ak = matrix_cpy(A, n);
+	double* Tmp = calloc(n * n, sizeof(double));
+
+	if (!Ak || !Tmp) {
+		die("malloc error (Ak || Tmp)");
+	}
+
+	coeffs[0] = 1.0;
+
+	double* S = calloc(n + 1, sizeof(double));
+
+	for (size_t k = 1; k <= n; k++) {
+		S[k] = trace(Ak, n);
+
+		if (k < n) {
+			matrix_mult(A, Ak, Tmp, n);
+			double* swap = Ak;
+			Ak = Tmp;
+			Tmp = swap;
+		}
+	}
+
+	for (size_t k = 1; k <= n; k++) {
+		double sum = 0.0;
+
+		for (size_t i = 1; i <= k; i++) {
+			sum += coeffs[k - i] * S[i];
+		}
+
+		coeffs[k] = -sum / (double) k;
+	}
+
+	free(Ak);
+	free(Tmp);
+	free(S);
 }

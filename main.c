@@ -1,28 +1,19 @@
-#include <lapacke.h>
+#include "graphs.h"
+#include "eig.h"
 #include <stdio.h>
+#include <stdbool.h>
 
 int main(void) {
-    int n = 4;
-    double A[16] = {
-        1,-1, 0, 0,
-       -1, 2,-1, 0,
-        0,-1, 2,-1,
-        0, 0,-1, 1
-    }; // Laplaciana do P4 (armazenada por linha)
-    double w[4]; // autovalores
+	Graph* g = graph_kn(10);
 
-    // dsyev: eigenvalues of real symmetric matrix
-    // 'V' = compute eigenvectors, 'U' = upper triangle
-    int info = LAPACKE_dsyev(LAPACK_ROW_MAJOR, 'V', 'U', n, A, n, w);
+	double w[g->n];
+	graph_spec_adj(g, w);
 
-    if (info > 0) {
-        fprintf(stderr, "Decomposição falhou.\n");
-        return 1;
-    }
+	eigenvalues_print(w, g->n, NULL);
 
-    printf("Autovalores:\n");
-    for (int i = 0; i < n; i++)
-        printf("%.10f\n", w[i]);
+	int diameter = graph_diameter(g);
 
-    return 0;
+	printf("diameter: %d\n", diameter);
+
+	return 0;
 }
