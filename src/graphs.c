@@ -36,6 +36,53 @@ Graph* graph_new(size_t	n, bool directed) {
 	return g;
 }
 
+Graph* graph_random(size_t n, bool directed, double p) {
+	if (p < 0.0 || p > 1.0) {
+		die("p must be a valid probability");
+	}
+
+	Graph* g = graph_new(n, directed);
+
+	for (size_t i = 0; i < n; i++) {
+		for (size_t j = (directed ? 0 : i + 1); j < n; j++) {
+			if (i == j) {
+				continue;
+			}
+
+			double r = (double) rand() / RAND_MAX;
+
+			if (r < p) {
+				g->A[i * n + j] = 1.0;
+
+				if (!directed) {
+					g->A[j * n + i] = 1.0;
+				}
+			}
+		}
+	}
+
+	return g;
+}
+
+size_t graph_num_edges(const Graph* g) {
+	size_t n = g->n;
+	size_t count = 0;
+
+	for (size_t i = 0; i < n; i++) {
+		for (size_t j = 0; j < n; j++) {
+			if (g->A[i * n + j] != 0.0) {
+				count++;
+			}
+		}
+	}
+
+	if (!g->directed) {
+		count /= 2;
+	}
+
+	return count;
+}
+
 void graph_free(Graph* g) {
 	if (!g) {
 		return;

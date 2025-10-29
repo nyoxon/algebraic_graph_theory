@@ -64,6 +64,13 @@ void die(const char* msg);
 Graph* graph_new(size_t n, bool directed);
 
 
+/*Cria um grafo aleatório e retorna um ponteiro para ele*/
+Graph* graph_random(size_t n, bool directed, double p) ;
+
+/*Retorna o número de aresta de um grafo qualquer*/
+size_t graph_num_edges(const Graph* g);
+
+
 /*Libera o conteúdo de um grafo*/
 void graph_free(Graph* g);
 
