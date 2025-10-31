@@ -5,21 +5,6 @@
 #include <time.h>
 #include <assert.h>
 
-unsigned long long binomial(unsigned int n, unsigned int k) {
-    if (k > n) return 0;
-    if (k == 0 || k == n) return 1;
-
-    if (k > n - k)
-        k = n - k;
-
-    unsigned long long res = 1;
-    for (unsigned int i = 1; i <= k; i++) {
-        res = res * (n - i + 1) / i;
-    }
-
-    return res;
-}
-
 long long graph_count_triangles_naive(const Graph *g) {
     size_t n = g->n;
     long long cnt = 0;
@@ -43,7 +28,7 @@ void simulate(size_t n, size_t n_times, double p) {
 	srand(time(NULL));
 
 	for (size_t i = 0; i < n_times; i++) {
-		Graph* g = graph_random(n, 0, p);
+		Graph* g = graph_random(n, p);
 		double* w = malloc(g->n * sizeof(double));
 		matrix_char_coeffs(g->A, g->n, w);
 
@@ -52,7 +37,10 @@ void simulate(size_t n, size_t n_times, double p) {
 		assert(-w[3] / 2.0 == (double)graph_count_triangles_naive(g));
 
 		free(w);
+        free(g);
 	}
+
+    printf("testes passaram!\n");
 }
 
 int main() {

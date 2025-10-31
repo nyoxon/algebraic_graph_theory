@@ -65,7 +65,14 @@ Graph* graph_new(size_t n, bool directed);
 
 
 /*Cria um grafo aleatório e retorna um ponteiro para ele*/
-Graph* graph_random(size_t n, bool directed, double p) ;
+Graph* graph_random(size_t n, double p) ;
+
+/*Cria um grafo conexo aleatório*/
+Graph* graph_random_connected(int n, double p);
+
+
+/*Verificar se g é conexo*/
+bool graph_is_connected(const Graph* g);
 
 /*Retorna o número de aresta de um grafo qualquer*/
 size_t graph_num_edges(const Graph* g);

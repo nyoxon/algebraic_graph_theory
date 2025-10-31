@@ -36,11 +36,12 @@ Graph* graph_new(size_t	n, bool directed) {
 	return g;
 }
 
-Graph* graph_random(size_t n, bool directed, double p) {
+Graph* graph_random(size_t n, double p) {
 	if (p < 0.0 || p > 1.0) {
 		die("p must be a valid probability");
 	}
 
+	int directed = 0;
 	Graph* g = graph_new(n, directed);
 
 	for (size_t i = 0; i < n; i++) {
@@ -62,6 +63,57 @@ Graph* graph_random(size_t n, bool directed, double p) {
 	}
 
 	return g;
+}
+
+Graph* graph_random_connected(int n, double p) {
+	Graph* g = graph_new(n, 0);
+
+	for (int i = 1; i < n; i++) {
+		int j = rand() % i;
+		g->A[i * n + j] = 1;
+		g->A[j * n + i] = 1;
+	}
+
+	for (int i = 0; i < n; i++) {
+		for (int j = i + 1; j < n; j++) {
+			if (g->A[i * n + j] == 0 && ((double)rand() / RAND_MAX) < p) {
+				g->A[i * n + j] = 1;
+				g->A[j * n + i] = 1;
+			}
+		}
+	}
+
+	return g;
+}
+
+bool graph_is_connected(const Graph* g) {
+	size_t n = g->n;
+
+	if (n <= 1) return true;
+
+	size_t *stack = malloc(n * sizeof(size_t));
+	char *vis   = calloc(n, 1);
+	if (!stack || !vis) { free(stack); free(vis); return false; }
+
+	int top = 0, visitados = 0;
+	stack[top++] = 0;
+	vis[0] = 1;
+
+	while (top) {
+		size_t u = stack[--top];
+		visitados++;
+
+		const double *row = &g->A[u * n];
+		for (size_t v = 0; v < n; v++) {
+			if (!vis[v] && row[v]) {
+				vis[v] = 1;
+				stack[top++] = v;
+			}
+		}
+	}
+
+	free(stack); free(vis);
+	return visitados == (int) n;
 }
 
 size_t graph_num_edges(const Graph* g) {
