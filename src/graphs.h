@@ -70,6 +70,11 @@ Graph* graph_random(size_t n, double p) ;
 /*Cria um grafo conexo aleatório*/
 Graph* graph_random_connected(int n, double p);
 
+/* Cria um grafo regular aleatório */
+Graph* graph_random_regular(size_t n, size_t k);
+
+/*Cria um grafo bipartido (de partições de tamanho n1 e n2) aleatório*/
+Graph* graph_random_bipartite(size_t n1, size_t n2, double p);
 
 /*Verificar se g é conexo*/
 bool graph_is_connected(const Graph* g);

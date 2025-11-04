@@ -86,6 +86,96 @@ Graph* graph_random_connected(int n, double p) {
 	return g;
 }
 
+Graph* graph_random_regular(size_t n, size_t k) {
+	if (k >= n) {
+		return NULL;
+	}
+
+	if ((n * k) % 2 != 0) {
+		return NULL;
+	}
+
+	Graph* g = graph_new(n, false);
+	size_t m = n * k;
+	size_t* stubs = malloc(m * sizeof(size_t));
+
+	for (size_t i = 0, idx = 0; i < n; i++) {
+		for (size_t j = 0; j < k; j++) {
+			stubs[idx++] = i;
+		}
+	}
+
+	bool ok = false;
+	int attempts = 0;
+
+	while (!ok && attempts++ < 1000) {
+		for (size_t i = 0; i < n * n; i++) {
+			g->A[i] = 0;
+		}
+
+		for (size_t i = 0; i < m; i++) {
+			size_t j = rand() % m;
+			size_t tmp = stubs[i];
+			stubs[i] = stubs[j];
+			stubs[j] = tmp;
+		}
+
+		ok = true;
+		for (size_t i = 0; i < m; i += 2) {
+			size_t a = stubs[i];
+			size_t b = stubs[i+1];
+
+			if (a == b || g->A[IDX(a, b, n)] != 0) {
+				ok = false;
+				break;
+			}
+
+			graph_add_edge(g, a, b, 1.0);
+		}
+	}
+
+	free(stubs);
+
+	if (!ok) {
+		graph_free(g);
+
+		return NULL;
+	}
+
+	return g;
+}
+
+/*
+O algoritmo se dá da seguinte forma:
+
+- escolha tamanhos n1 e n2
+- crie uma matriz B de 0's e 1's de tamanho n1 + n2 aleatória
+- construa A a partir dos blocos
+*/
+Graph* graph_random_bipartite(size_t n1, size_t n2, double p) {
+	if (p < 0.0 || p > 1.0) {
+		return NULL;
+	}
+
+	size_t n = n1 + n2;
+	Graph* g = graph_new(n, false);
+
+	/*Os vértices até n1 - 1 pertencem a X*/
+	for (size_t i = 0; i < n1; i++) {
+		for (size_t j = 0; j < n2; j++) {
+			if ((double) rand() / RAND_MAX < p) {
+				size_t a = i;
+				size_t b = n1 + j;
+
+				g->A[IDX(a, b, n)] = 1;
+				g->A[IDX(b, a, n)] = 1;
+			}
+		}
+	}
+
+	return g;
+}
+
 bool graph_is_connected(const Graph* g) {
 	size_t n = g->n;
 
