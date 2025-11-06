@@ -16,7 +16,7 @@ objeto a ser criado e passar um ponteiro VÁLIDO para esse espaço
 para a função.
 
 Exemplo com graph_degree:
-
+			  malloc(g->n * sizeof(double));
 double* deg = calloc(g->n, sizeof(double)); // #include <stdlib.h> para calloc
 
 if (!deg) { // garante que o ponteiro é válido. opcional, mas recomendado
@@ -60,26 +60,35 @@ typedef struct {
 void die(const char* msg);
 
 
-/*Cria um grafo dinamicamente e retorna um ponteiro para ele*/
+/*Cria um grafo em memória dinâmica (free-after-use) e 
+retorna um ponteiro para ele.
+A matriz g->A é preenchida com zeros, então o acesso à memória
+é seguro mesmo se você não adicionar nenhuma aresta logo
+após ter chamado a função.*/
 Graph* graph_new(size_t n, bool directed);
 
 
 /*Cria um grafo aleatório e retorna um ponteiro para ele*/
 Graph* graph_random(size_t n, double p) ;
 
+
 /*Cria um grafo conexo aleatório*/
 Graph* graph_random_connected(int n, double p);
+
 
 /* Cria um grafo regular aleatório */
 Graph* graph_random_regular(size_t n, size_t k);
 
+
 /*Cria um grafo bipartido (de partições de tamanho n1 e n2) aleatório*/
 Graph* graph_random_bipartite(size_t n1, size_t n2, double p);
 
-/*Verificar se g é conexo*/
+
+/*Verifica se g é conexo*/
 bool graph_is_connected(const Graph* g);
 
-/*Retorna o número de aresta de um grafo qualquer*/
+
+/*Retorna o número de arestas de um grafo qualquer*/
 size_t graph_num_edges(const Graph* g);
 
 
@@ -87,7 +96,8 @@ size_t graph_num_edges(const Graph* g);
 void graph_free(Graph* g);
 
 
-/*Preenche g->A com zeros*/
+/*Preenche g->A com zeros (ao usar graph_new(), a matriz já
+é preenchida com zeros)*/
 void graph_clear(Graph* g);
 
 
@@ -102,7 +112,8 @@ void graph_add_edge(Graph *g, size_t u, size_t v, double w);
 void graph_remove_edge(Graph* g, size_t u, size_t v);
 
 
-/*Retorna g->A[u, v]*/
+/*Retorna g->A[u, v]. Equivalente a g->A[IDX(u, v, g->n)], mas
+com bound check para u e v*/
 double graph_get(const Graph* g, size_t u, size_t v);
 
 
@@ -110,7 +121,7 @@ double graph_get(const Graph* g, size_t u, size_t v);
 size_t graph_num_vertice(const Graph* g);
 
 
-/*Retorna se o grafo é direcionado*/
+/*Verifica se o grafo é direcionado*/
 bool graph_is_directed(const Graph* g);
 
 
@@ -133,6 +144,14 @@ void graph_degree_matrix(const Graph* g, double* d);
 
 /*Calcula L = D - A laplaciana*/
 void graph_laplacian(const Graph* g, double *l);
+
+
+/*Calcula a matriz de incidência de um grafo
+Diferentemente das duas últimas funções, esta retorna
+diretamente a matriz. Isso porque precisamos calcular
+o número de arestas de um grafo, o que achei mais
+conveniente a função fazer.*/
+double* graph_incidence_matrix(const Graph* g);
 
 
 /*Calcula Ln = (D)^1/2 * L * (D)^1/2 laplaciana normalizada*/
@@ -183,5 +202,6 @@ Graph* graph_kn(size_t n);
 
 /*Acha o diâmetro do grafo*/
 int graph_diameter(const Graph *g);
+
 
 #endif

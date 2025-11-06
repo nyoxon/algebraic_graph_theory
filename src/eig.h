@@ -41,4 +41,7 @@ coeficientes para o algoritmo ter complexidade até O(kn³), mas preferi
 fazer assim mesmo*/
 void matrix_char_coeffs(const double* A, size_t n, double* coeffs);
 
+/*Acha o rank de uma matriz*/
+unsigned int matrix_rank(const double* A, size_t n, size_t m, double tol);
+
 #endif

@@ -36,6 +36,7 @@ Graph* graph_new(size_t	n, bool directed) {
 	return g;
 }
 
+/*Cria uma aresta com probabilidade p*/
 Graph* graph_random(size_t n, double p) {
 	if (p < 0.0 || p > 1.0) {
 		die("p must be a valid probability");
@@ -66,7 +67,7 @@ Graph* graph_random(size_t n, double p) {
 }
 
 Graph* graph_random_connected(int n, double p) {
-	Graph* g = graph_new(n, 0);
+	Graph* g = graph_new(n, false);
 
 	for (int i = 1; i < n; i++) {
 		int j = rand() % i;
@@ -160,7 +161,7 @@ Graph* graph_random_bipartite(size_t n1, size_t n2, double p) {
 	size_t n = n1 + n2;
 	Graph* g = graph_new(n, false);
 
-	/*Os vértices até n1 - 1 pertencem a X*/
+	/*Os vértices até (n1 - 1) pertencem a X*/
 	for (size_t i = 0; i < n1; i++) {
 		for (size_t j = 0; j < n2; j++) {
 			if ((double) rand() / RAND_MAX < p) {
@@ -246,7 +247,7 @@ void graph_add_edge(Graph* g, size_t u, size_t v, double w) {
 	bounds_check(g->n, u, v);
 	g->A[IDX(u, v, g->n)] = w;
 
-	/*Se g não for direcionado, g->A será simétrica*/
+	/*se g não for direcionado, g->A será simétrica*/
 	if (!g->directed && u != v) {
 		g->A[IDX(v, u, g->n)] = w;
 	}
@@ -401,6 +402,35 @@ void graph_laplacian(const Graph* g, double* L) {
 	}
 
 	free(deg);
+}
+
+double* graph_incidence_matrix(const Graph* g) {
+	size_t n = g->n;
+	size_t m = graph_num_edges(g);
+
+	double* B = calloc(n * m, sizeof(double));
+
+	if (!B) {
+		die("calloc error (B)");
+	}
+
+	size_t e = 0;
+
+	for (size_t i = 0; i < n; i++) {
+		for (size_t j = 0; j < n; j++) {
+			if (g->A[IDX(i, j, n)] != 0) {
+				if (!g->directed && j <= 1) {
+					continue;
+				}
+
+				B[IDX(i, e, m)] = 1.0;
+				B[IDX(j, e, m)] = -1.0;
+				e++;
+			}
+		}
+	}
+
+	return B;
 }
 
 void graph_normalized_laplacian(const Graph* g, double* Ln) {

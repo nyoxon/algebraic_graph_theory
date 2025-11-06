@@ -58,6 +58,7 @@ int graph_spec_adj(const Graph* g, double* x) {
 
 int graph_spec_lap(const Graph* g, double* x) {
 	double* l = (double*) calloc(g->n * g->n, sizeof(double));
+	graph_laplacian(g, l);
 
 	int info = matrix_spec(l, g->n, x);
 
@@ -116,4 +117,41 @@ void matrix_char_coeffs(const double* A, size_t n, double* coeffs) {
 	free(Ak);
 	free(Tmp);
 	free(S);
+}
+
+unsigned int matrix_rank(const double* A, size_t n, size_t m, double tol) {
+	int info;
+	int rank = 0;
+
+	double* A_copy = malloc(n * m * sizeof(double));
+
+	for (size_t i = 0; i < n * m; i++) {
+		A_copy[i] = A[i];
+	}
+
+	size_t k = (n < m) ? n : m;
+	double* S = malloc(k * sizeof(double));
+	double* U = malloc(n * n * sizeof(double));
+	double* VT = malloc(m* m * sizeof(double));
+	double superb[k > 1 ? k - 1 : 1];
+
+	info = LAPACKE_dgesvd(LAPACK_ROW_MAJOR, 'A', 'A',
+		n, m, A_copy, m, S, U, n, VT, m, superb);
+
+	if (info > 0) {
+		die("SVD não convergiu");
+	}
+
+	for (size_t i = 0; i < k; i++) {
+		if (S[i] > tol) {
+			rank++;
+		}
+	}
+
+	free(A_copy);
+	free(S);
+	free(U);
+	free(VT);
+
+	return rank;
 }
